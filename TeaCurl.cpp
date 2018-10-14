@@ -14,10 +14,38 @@ TeaCurl::TeaCurl(std::string _url) {
 void TeaCurl::exec() {
 	res = curl_easy_perform(ch);
 	if(res == CURLE_OK) {
+		
+		curl_easy_getinfo(ch, CURLINFO_HEADER_SIZE, &responseHeaderSize);
+
+		responseHeader = (char*)malloc(responseHeaderSize);
+
+		printf("Got responseHeaderSize: %ld\n", responseHeaderSize);
+
+		if (responseHeaderSize)
+		{
+			printf("Parsing header....\n");
+
+			long hPos = 0;
+
+			while (hPos != responseHeaderSize) {
+				responseHeader[hPos] = out[hPos];
+				hPos++;
+			}
+
+			FILE *test = fopen("header.txt", "w");
+			fwrite(responseHeader, strlen(responseHeader), sizeof(responseHeader), test);
+			fclose(test);
+			printf("%s\n", responseHeader);
+		}
+
 		curl_easy_getinfo(ch, CURLINFO_RESPONSE_CODE, &httpCode);
 	} else {
 		error = curl_easy_strerror(res);
 	}
+}
+
+CURLcode TeaCurl::getInfo(CURLINFO infoOpt, void *ptr) {
+	return curl_easy_getinfo(ch, infoOpt, ptr);
 }
 
 CURLcode TeaCurl::getRes() {
@@ -41,6 +69,7 @@ void TeaCurl::setOpt(CURLoption opt, const void *val) {
 }
 
 void TeaCurl::setUp() {
+	curl_easy_setopt(ch, CURLOPT_HEADER, 1);
 	curl_easy_setopt(ch, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0);
 	curl_easy_setopt(ch, CURLOPT_SSL_VERIFYHOST, 0);
@@ -53,6 +82,6 @@ void TeaCurl::cleanUp() {
 	curl_easy_cleanup(ch);
 }
 
-TeaCurl::~TeaCurl() {
+TeaCurl::~TeaCurl() {	
 	cleanUp();
 }

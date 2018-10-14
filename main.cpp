@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 	// Prevent defunct
 	signal(SIGCHLD, SIG_IGN);
 
-	for(int i = 0; i < 3; i++) {
+	for(int i = 0; i < 1; i++) {
 		int pid = fork();
 		if (pid == 0) {
 
@@ -27,6 +27,12 @@ int main(int argc, char *argv[]) {
 			tch.setOpt(CURLOPT_COOKIEJAR, "/tmp/cookie");
 			tch.setOpt(CURLOPT_COOKIEFILE, "/tmp/cookie");
 			tch.exec();
+
+			char *effectiveURL = (char*)malloc(1024);
+
+			tch.getInfo(CURLINFO_EFFECTIVE_URL, &effectiveURL);
+
+			printf("Got effective URL: %s\n", effectiveURL);
 
 			if (tch.getRes() == CURLE_OK) {
 				std::string body = tch.getBody();
@@ -45,7 +51,7 @@ int main(int argc, char *argv[]) {
 			}
 			sleep(4);
 			return 0;
-		}	
+		}
 	}
 
 	wait(NULL);

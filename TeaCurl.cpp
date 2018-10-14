@@ -1,6 +1,6 @@
 #include "TeaCurl.h"
 
-static size_t __teaCurlWriteFunc(void *contents, size_t size, size_t nmemb, void *userp) {
+size_t TeaCurl::__teaCurlWriteFunc(void *contents, size_t size, size_t nmemb, void *userp) {
 	((std::string*)userp)->append((char*)contents, size*nmemb);
 	return size*nmemb;
 }
@@ -8,36 +8,16 @@ static size_t __teaCurlWriteFunc(void *contents, size_t size, size_t nmemb, void
 TeaCurl::TeaCurl(std::string _url) {
 	url = _url;
 	ch = curl_easy_init();
-	setUp();
+	this->setUp();
+}
+
+CURL *TeaCurl::getCurlResource() {
+	return ch;
 }
 
 void TeaCurl::exec() {
 	res = curl_easy_perform(ch);
 	if(res == CURLE_OK) {
-		
-		curl_easy_getinfo(ch, CURLINFO_HEADER_SIZE, &responseHeaderSize);
-
-		responseHeader = (char*)malloc(responseHeaderSize);
-
-		printf("Got responseHeaderSize: %ld\n", responseHeaderSize);
-
-		if (responseHeaderSize)
-		{
-			printf("Parsing header....\n");
-
-			long hPos = 0;
-
-			while (hPos != responseHeaderSize) {
-				responseHeader[hPos] = out[hPos];
-				hPos++;
-			}
-
-			FILE *test = fopen("header.txt", "w");
-			fwrite(responseHeader, strlen(responseHeader), sizeof(responseHeader), test);
-			fclose(test);
-			printf("%s\n", responseHeader);
-		}
-
 		curl_easy_getinfo(ch, CURLINFO_RESPONSE_CODE, &httpCode);
 	} else {
 		error = curl_easy_strerror(res);
@@ -56,6 +36,10 @@ std::string TeaCurl::getError() {
 	return error;
 }
 
+std::string TeaCurl::getResponseHeader() {
+	return responseHeader;
+}
+
 std::string TeaCurl::getBody() {
 	return out;
 }
@@ -69,19 +53,30 @@ void TeaCurl::setOpt(CURLoption opt, const void *val) {
 }
 
 void TeaCurl::setUp() {
-	curl_easy_setopt(ch, CURLOPT_HEADER, 1);
 	curl_easy_setopt(ch, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0);
 	curl_easy_setopt(ch, CURLOPT_SSL_VERIFYHOST, 0);
 	curl_easy_setopt(ch, CURLOPT_FOLLOWLOCATION, 1);
-	curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, __teaCurlWriteFunc);
+	
+	curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, TeaCurl::__teaCurlWriteFunc);	
 	curl_easy_setopt(ch, CURLOPT_WRITEDATA, &out);
+
+	curl_easy_setopt(ch, CURLOPT_HEADERFUNCTION, TeaCurl::__teaCurlWriteFunc);
+	curl_easy_setopt(ch, CURLOPT_WRITEHEADER, &responseHeader);
+}
+
+void TeaCurl::close() {
+	this->cleanUp();
+	this->closed = 1;
 }
 
 void TeaCurl::cleanUp() {
 	curl_easy_cleanup(ch);
 }
 
-TeaCurl::~TeaCurl() {	
-	cleanUp();
+TeaCurl::~TeaCurl() {
+	if (!this->closed)
+	{
+		cleanUp();
+	}
 }

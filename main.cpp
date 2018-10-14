@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 	// Prevent defunct
 	signal(SIGCHLD, SIG_IGN);
 
-	for(int i = 0; i < 1; i++) {
+	for(int i = 0; i < 3; i++) {
 		int pid = fork();
 		if (pid == 0) {
 
@@ -27,17 +27,22 @@ int main(int argc, char *argv[]) {
 			tch.setOpt(CURLOPT_COOKIEJAR, "/tmp/cookie");
 			tch.setOpt(CURLOPT_COOKIEFILE, "/tmp/cookie");
 			tch.exec();
-
+			
 			char *effectiveURL = (char*)malloc(1024);
-
 			tch.getInfo(CURLINFO_EFFECTIVE_URL, &effectiveURL);
 
 			printf("Got effective URL: %s\n", effectiveURL);
 
+			std::string responseHeader = tch.getResponseHeader();
+			long httpCode = tch.getHttpCode();
+
+			printf("Got response header:\n%s\n", responseHeader.c_str());
+			printf("Got http code: %ld\n", httpCode);
+
 			if (tch.getRes() == CURLE_OK) {
 				std::string body = tch.getBody();
 				char filename[10];
-				sprintf(filename, "out_%d.txt", i);
+				sprintf(filename, "out_%d.tmp", i);
 				FILE *h = fopen(filename, "w");
 				const char *cstrBody = body.c_str();
 
@@ -49,7 +54,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				printf("An error occued: %s\n", tch.getError().c_str());
 			}
-			sleep(4);
+			sleep(10);
 			return 0;
 		}
 	}
